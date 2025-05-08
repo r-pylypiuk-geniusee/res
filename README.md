@@ -2,22 +2,23 @@
 
 This document outlines the details of our infrastructure and the deployment process. The infrastructure is based on a Kubernetes architecture and is designed to support two primary environments.
 
+---
+
 ## Architecture Overview
 
 _Current infrastructure architecture diagram:_  
-
 ![Screenshot 2025-05-08 at 02 34 53](https://github.com/user-attachments/assets/ae112608-5a59-4588-8e45-1a355ce1de11)
 
+Lucidchart diagram: [https://drive.google.com/file/d/1BC0HOE9-reLP78bTedsVr8nvBNinrcl3/view?usp=sharing](https://drive.google.com/file/d/1BC0HOE9-reLP78bTedsVr8nvBNinrcl3/view?usp=sharing)
 
-Lucidchart diagram: https://drive.google.com/file/d/1BC0HOE9-reLP78bTedsVr8nvBNinrcl3/view?usp=sharing
 ---
 
 ## Environments
 
 We maintain two isolated environments, each hosted in a separate Azure Kubernetes Cluster and using a dedicated database:
 
-- Staging
-- Production
+- **Staging**
+- **Production**
 
 ---
 
@@ -25,13 +26,13 @@ We maintain two isolated environments, each hosted in a separate Azure Kubernete
 
 The following repositories support the infrastructure:
 
-| Repository       | Description                                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ani_app_gitops` | Contains Helm templates for each service per environment, managed by ArgoCD.                                                                |
-| `ani-iacc`       | Includes Kubernetes initialization scripts and Terragrunt configurations for environment setup.                                                |
-| `ani-api`        | Backend service repository.                                                                                                                |
-| `ani-app`        | Frontend service repository.                                                                                                               |
-| `ani-worker`     | Worker service repository.                                                                                                                 |
+| Repository       | Description                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------ |
+| `ani_app_gitops` | Contains Helm templates for each service per environment, managed by ArgoCD.                    |
+| `ani-iacc`       | Includes Kubernetes initialization scripts and Terragrunt configurations for environment setup. |
+| `ani-api`        | Backend service repository.                                                                      |
+| `ani-app`        | Frontend service repository.                                                                     |
+| `ani-worker`     | Worker service repository.                                                                       |
 
 ---
 
@@ -41,10 +42,8 @@ Several infrastructure services are deployed in Kubernetes:
 
 - **cert-manager**: Issues self-signed SSL certificates for Ingresses.  
   _To create a new Ingress with a certificate: TODO._
-
 - **external-dns**: Automatically creates DNS records in Cloudflare for defined Ingress hosts.  
   _To configure a new host: TODO._
-
 - **Dex**: An identity service integrating with external authentication systems (e.g., Google, Azure, Email, etc.).
 
 ---
@@ -53,11 +52,10 @@ Several infrastructure services are deployed in Kubernetes:
 
 ![Screenshot 2025-05-08 at 03 18 01](https://github.com/user-attachments/assets/776b907f-91e7-4464-a663-b7c1378a3986)
 
-- **Staging Cluster (aks-ani-staging)** consists of two NodePools:
+- **Staging Cluster (`aks-ani-staging`)** consists of two NodePools:
   - `default`: Statically configured with a predefined number of nodes.
-  - `etljobs`: NodePool that automatically scales from 0 to 5 nodes based on memory/CPU requests.
-  
-- **Production Cluster (aks-ani-prod)** contains a single static NodeGroup (`aks-ani-prod`) where all services reside.
+  - `etljobs`: Scales automatically from 0 to 5 nodes based on memory/CPU requests.
+- **Production Cluster (`aks-ani-prod`)** contains a single static NodeGroup (`aks-ani-prod`) where all services reside.
 
 ---
 
@@ -66,11 +64,11 @@ Several infrastructure services are deployed in Kubernetes:
 To scale the Kubernetes cluster:
 
 1. Navigate to **Settings** → **NodePools** in the desired cluster.
-2. Select the **default NodePool** and adjust the node count as needed, as shown in the screenshot.
+2. Select the **default NodePool** and adjust the node count as needed.
 
 ![Screenshot 2025-05-08 at 02 55 29](https://github.com/user-attachments/assets/c9ee28a7-cf43-445e-aced-fc83252941a0)
 
-Scaling can take a few minutes to complete, as new nodes need to be automatically configured and added to the cluster. The `etljobs` NodePool scales automatically, so no manual scaling is needed for it.
+Scaling may take a few minutes as new nodes are configured and added automatically. The `etljobs` NodePool scales automatically.
 
 ---
 
@@ -80,48 +78,51 @@ We use the following monitoring services:
 
 - **Grafana**: Monitoring platform.  
   Access: [https://grafana.{staging}.ani.tech](https://grafana.{staging}.ani.tech)
-
 - **ELK (Elasticsearch, Logstash, Kibana)**: Centralized logging and visualization system.  
   Access: [https://logs.{staging}.ani.tech](https://logs.{staging}.ani.tech)
 
 ---
 
 ## Accessing Azure Portal
-You could use the following link to access Azure - http://portal.azure.com/
 
-
-
-## Accessing the Kubernetes Clusters
-
-To access the Kubernetes clusters, follow these steps:
-
-### 1. Ensure Required Permissions
-
-Make sure you have been granted the necessary access in **Entra ID** (formerly Azure Active Directory).
-
-To authenticate with Azure CLI:
-
-`az login`
+You can access Azure using the following link:  
+[http://portal.azure.com](http://portal.azure.com)
 
 ---
 
+## Accessing the Kubernetes Clusters
+
+### 1. Ensure Required Permissions
+
+Make sure you have the necessary access in **Entra ID** (formerly Azure Active Directory).  
+Authenticate with Azure CLI:
+
+```bash
+az login
+```
+
 ### 2. Retrieve kubeconfig Files
 
-Use the Azure CLI to retrieve credentials and configure access to the clusters.
+Use the Azure CLI to retrieve credentials and configure access:
 
 **Production Cluster:**
 
-`az aks get-credentials --resource-group ani-prod --name aks-ani-prod`
+```bash
+az aks get-credentials --resource-group ani-prod --name aks-ani-prod
+```
 
 **Staging Cluster:**
 
-`az aks get-credentials --resource-group ani-staging --name aks-ani-staging`
+```bash
+az aks get-credentials --resource-group ani-staging --name aks-ani-staging
+```
 
-This command updates your local `~/.kube/config` file.
+This updates your local `~/.kube/config` file.  
+To deploy images locally, also log in to the Azure Container Registry:
 
-Additionally, log in to the Azure Container Registry to deploy images locally:
-
-`az acr login -n acranishared`
+```bash
+az acr login -n acranishared
+```
 
 ---
 
@@ -131,21 +132,20 @@ Deployments are managed via **GitHub Actions** and **ArgoCD** (GitOps model).
 
 ### CI/CD Flow
 
-1. **CI Files**: These are located in the `.github/workflows` directory.
+1. **CI Files** (located in `.github/workflows`):
    - `staging.yaml` for Staging
    - `prod.yaml` for Production
 
-2. **Steps in the CI/CD Pipeline**:
+2. **Pipeline Steps**:
    - Authenticate with Azure Container Registry (`acranishared`).
-   - Build Docker images for services (`ani-api`, `ani-app`, `ani-websocket`, `ani-worker`).
-   - Push Docker images to the container registry.
+   - Build Docker images for services: `ani-api`, `ani-app`, `ani-websocket`, `ani-worker`.
+   - Push images to the registry.
 
 3. **Image Update and Deployment**:
-   - `argocd-image-updater` monitors image versions in the registry.
-   - When a new image is detected, it updates the image tag in the `ani_app_gitops` repository.
+   - `argocd-image-updater` monitors the registry and updates image tags in `ani_app_gitops`.
      - **Production tag format**: `${{ github.ref_name }}-${{ github.run_number }}-stable`
      - **Staging tag format**: `${{ secrets.ANI_ACR_LOGIN_SERVER }}/ani-app:${{ github.ref_name }}-${{ github.run_number }}`
-   - ArgoCD detects the change and automatically triggers a new deployment.
+   - ArgoCD detects changes and triggers a deployment.
 
 ---
 
@@ -153,191 +153,169 @@ Deployments are managed via **GitHub Actions** and **ArgoCD** (GitOps model).
 
 ### Deploying an Existing Service
 
-To deploy a service (e.g., `ani-app`), follow these steps:
-
 1. Merge changes into the `staging` or `main` branch.
-2. This will trigger the corresponding GitHub Actions CI pipeline for the selected environment.
+2. This triggers the corresponding GitHub Actions pipeline.
 
 ### Locating Environment Variables
 
-Environment variables for each service are stored in the `ani_app_gitops` repository:
-
-- Path: `{staging|prod}/{service_name}/values.yaml`
-- Non-sensitive variables are listed under the `envs` key.
-- Sensitive variables are stored under the `sealedSecrets` key.
-
-> **Sealed Secrets** ensure sensitive data is encrypted and not visible in plain text within the repository.
+- Stored in `ani_app_gitops` under: `{staging|prod}/{service_name}/values.yaml`
+- Non-sensitive variables: `envs` key.
+- Sensitive variables: `sealedSecrets` key (encrypted using Sealed Secrets).
 
 ### Creating a Sealed Secret
 
-To create a new sealed secret:
+1. Install Kubeseal: [https://github.com/bitnami-labs/sealed-secrets#homebrew](https://github.com/bitnami-labs/sealed-secrets#homebrew)
+2. Ensure access to Kubernetes and a valid context is configured.
+3. Example:
 
-1. Download Kubeseal - https://github.com/bitnami-labs/sealed-secrets#homebrew
-2. In order to seal Kubenetes secret you already should have access to Kubernetes Cluster, as Seal Controller uses private key for sealing/unsealing operations on secrets, therefore please check access to Kubernetes and configured Kubernetes Context
-3. Here is example command
-echo -n bar | kubectl create secret generic mysecret --dry-run=client --from-file=foo=/dev/stdin -o json >mysecret.json
-In the terminal you would receive something like that
-{
-    "kind": "Secret",
-    "apiVersion": "v1",
-    "metadata": {
-        "name": "mysecret",
-        "creationTimestamp": null
-    },
-    "data": {
-        "foo": "YmFy"
-    }
-}
+```bash
+echo -n bar | kubectl create secret generic mysecret --dry-run=client --from-file=foo=/dev/stdin -o json > mysecret.json
+```
 
-it basically how your sealed secret should look like and you could value of key foo
-5. Commit the updated `values.yaml` file to the appropriate location in the `ani_app_gitops` repository.
-6. This will trigger a redeploy, and the updated secret will be applied to the service.
+4. Commit `values.yaml` in the appropriate location in `ani_app_gitops`.
+5. A redeploy is triggered and the new secret is applied.
 
-### How to view sealed secret in plain format
+### Viewing a Sealed Secret in Plain Format
 
-First of all, check once more that you have setted needed Kubernetes context for your cluster, after that you can proceed.
-1. Retrieve sealed secret from your cluster, to start you coudl view all your sealedsecrets with
-   ![Screenshot 2025-05-08 at 13 23 38](https://github.com/user-attachments/assets/f23adbfc-9fd5-49a8-98d0-603781c0dc92)
+1. Ensure correct Kubernetes context.
+2. List sealed secrets:
 
-2. Then remember namespace and name of your secret and download it to your local machine
-   For example to retrieve ani-api secret inside ani-api namespace you could use that command
+   ![Screenshot](https://github.com/user-attachments/assets/f23adbfc-9fd5-49a8-98d0-603781c0dc92)
 
-kubectl get sealedsecret ani-api -n ani-api -o yaml > sealed-secret-v2.yaml  
+3. Download a secret:
 
-3. Also you would need to get private key used by Sealed secrets for encryption operation (please be carefull, as all secrets are encrypted via that key)
-To retrieve it you could use that command and it will appear in sealed-secrets-key.yaml
- file
+```bash
+kubectl get sealedsecret ani-api -n ani-api -o yaml > sealed-secret-v2.yaml
+```
 
+4. Retrieve the private key:
+
+```bash
 kubectl get secret -n sealed-secrets -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealed-secrets-key.yaml
+```
 
+5. Decrypt:
 
-4. After that all you need is to run, and you would see decrypted secrets in base64 format
+```bash
+kubeseal --controller-name=sealed-secrets --controller-namespace=sealed-secrets < sealed-secret-v2.yaml --recovery-unseal --recovery-private-key sealed-secrets-key.yaml -o yaml
+```
 
-   kubeseal --controller-name=sealed-secrets --controller-namespace=sealed-secrets < sealed-secret-v2.yaml --recovery-unseal --recovery-private-key sealed-secrets-key.yaml -o yaml
+6. Decode:
 
-To unhash it from base64 format you ccould run the following command 
-
+```bash
 echo '{secret}' | base64 --decode
-
-there in data key you would see all unsealed secre
+```
 
 ---
 
 ### Configuring Deployment for a New Service
 
-To configure deployment for a new service:
-
-1. Create a new repository, push your code, and configure the `Dockerfile`.
-2. Copy the existing CI workflow from any other project, then configure the required secrets for GitHub Actions (e.g., ACR and Azure access).
-3. Add the Helm chart for your project to the `ani_app_gitops` repository. You can copy an existing chart and modify the values as needed.
-4. Create a staging branch, which will trigger the CI pipeline. After verifying the service on staging, repeat the process for production.
+1. Create and push a new repository.
+2. Configure `Dockerfile` and GitHub Actions secrets.
+3. Add a Helm chart to `ani_app_gitops`.
+4. Create a `staging` branch to trigger deployment. Repeat for production.
 
 ---
 
 ### Scaling a Service
 
-To scale a service temporarily:
+- **Temporary**: Use **Lens IDE** → **Deployments** → Adjust pod count.
 
-1. Use **Lens IDE** for Kubernetes: 
-   - Go to **Deployments**, select the deployment, and adjust the pod count using the provided buttons.
-  
-  <img width="1019" alt="Screenshot 2025-05-08 at 02 46 31" src="https://github.com/user-attachments/assets/0801ab79-640a-460e-a3ee-6c4049e8d355" />
+  ![Screenshot](https://github.com/user-attachments/assets/0801ab79-640a-460e-a3ee-6c4049e8d355)
 
-For persistent scaling, update the `replicaCount` in the `values.yaml` file under the appropriate environment and service path in `ani_app_gitops`. ArgoCD will automatically redeploy the service.
+- **Persistent**: Update `replicaCount` in `values.yaml`. ArgoCD redeploys automatically.
 
-![Screenshot 2025-05-08 at 02 48 50](https://github.com/user-attachments/assets/58971fa0-a78f-46b2-b637-02e07c08f637)
+  ![Screenshot](https://github.com/user-attachments/assets/58971fa0-a78f-46b2-b637-02e07c08f637)
 
 ---
 
-### Rolling Back a Service to a Previous Version
+### Rolling Back a Service
 
-To roll back to a previous version:
+1. Open ArgoCD:
+   - [Staging](https://argocd.staging.ani.tech/)
+   - [Production](https://argocd.ani.tech/)
+2. Go to **History & Rollback** on the service.
+3. Select a version and click **Rollback**.
 
-1. Navigate to ArgoCD (either staging or production) at:
-   - [https://argocd.staging.ani.tech/](https://argocd.staging.ani.tech/) or [https://argocd.ani.tech/](https://argocd.ani.tech/).
-2. Select the appropriate service and go to **History & Rollback**.
- ![Screenshot 2025-05-08 at 02 51 37](https://github.com/user-attachments/assets/772b90a9-7b48-4b4f-9690-d381780fc14f)
-4. Select the version you wish to roll back to, then click **Rollback**
-
-  ![Screenshot 2025-05-08 at 02 52 33](https://github.com/user-attachments/assets/e053c663-78bb-46c5-aa79-6c5483577cc5)
+  ![Screenshot](https://github.com/user-attachments/assets/772b90a9-7b48-4b4f-9690-d381780fc14f)
 
 ---
 
 ### Troubleshooting ArgoCD Deployments
 
-If ArgoCD fails to deploy a new version:
+1. Go to ArgoCD, select your service.
+2. View Kubernetes resource graph.
+3. Click red-marked resources to view error messages.
 
-1. Go to ArgoCD, select your service, and view the full Kubernetes resource graph.
-2. If the status is red, it indicates an issue with deploying the Kubernetes manifest. Click the resource to view the error details.
-3. You can also check the problem using the **Info** button.
-
-![Screenshot 2025-05-08 at 02 55 29](https://github.com/user-attachments/assets/e08db6ba-4531-487d-96af-c6da709505cf)
+  ![Screenshot](https://github.com/user-attachments/assets/e08db6ba-4531-487d-96af-c6da709505cf)
 
 ---
 
 ### Manual Syncing in ArgoCD
 
-If ArgoCD fails to detect changes in your service:
+Click the **Sync** button if ArgoCD doesn’t detect changes.
 
-1. Sync the Helm template manually by clicking the **Sync** button on the service page in ArgoCD.
-
-![Screenshot 2025-05-08 at 02 55 29](https://github.com/user-attachments/assets/6e6aee39-b64d-4e35-a80d-a981be8dea18)
+  ![Screenshot](https://github.com/user-attachments/assets/6e6aee39-b64d-4e35-a80d-a981be8dea18)
 
 ---
 
-### How to view logs from containers
+### Viewing Container Logs
 
-For sure you could do it via Lens IDE and click on pods to view logs in Pod section, however if you need to view old logs for example logs that were received a week ago, you can go to ELK [https://logs.{staging}.ani.tech](https://logs.{staging}.ani.tech). There you could login using elastic user and open up Analyze tab
-![Screenshot 2025-05-08 at 12 05 45](https://github.com/user-attachments/assets/2b9eea4e-f0f6-47ee-bc49-4f526ae9cf5a)
+- Via Lens IDE: Select pods → Logs.
+- For historical logs:  
+  Go to [https://logs.staging.ani.tech](https://logs.staging.ani.tech), log in as `elastic`, open **Analyze** tab.
 
-Then you could type out query to filter out pods by service-name, for example on a screenshoot you see query of ani-api - kubernetes.labels.app_kubernetes_io/name : "ani-api", it filters out and shows only that specific service pods, there you also could filter out date of logs to be shown
-![Screenshot 2025-05-08 at 12 09 21](https://github.com/user-attachments/assets/31e3c7b2-d2fc-4ecf-a1be-f0f925259e1c)
+  Example query:
 
-From fields names on a left tab, you could choose what fields to view (on a screenshoot you could see - kubernetes.node.name, kubernetes.pod.name, message). Here is exact link to query on a screenshoot - https://logs.staging.ani.tech/app/r/s/3ZTkc 
+```text
+kubernetes.labels.app_kubernetes_io/name : "ani-api"
+```
 
-In order to view logs specifically for a staging or production, you could go to TODO
+  ![Screenshots](https://github.com/user-attachments/assets/2b9eea4e-f0f6-47ee-bc49-4f526ae9cf5a)
+  ![Screenshots](https://github.com/user-attachments/assets/31e3c7b2-d2fc-4ecf-a1be-f0f925259e1c)
 
 ---
 
-### How to monitor Kubernetes cluster resources, service resources on Kubernetes clusters
-For that, there are two Grafana instances deployed that export resource metrics from Kubernetes cluster, one per environemnt, for staging - grafana.staging.ani.tech, and for production - grafana.ani.tech. Feel free to login via Dex button.
-There you could view all available dashboards via Dashboards button
-![Screenshot 2025-05-08 at 12 20 10](https://github.com/user-attachments/assets/719636ba-9836-4bd7-bfcf-3616ee2f8096)
+### Monitoring Kubernetes Cluster Resources
 
-Useful dashboards here, are 
-- Kubernetes / Compute Resources / Namespace (Pods) - to view reosurce utilization (memory, cpu) per namespace
-- Kubernetes / Compute Resources / Node (Pods) - to view reosurce utilization (memory, cpu) per Node
-- Kubernetes / Compute Resources / Pod - to view resources utilization (memory, cpu per, network metrics Pod)
-There are also similar dashboards specifically for Network metircs (such as Kubernetes / Networking / Namespace (Pods))
+Access Grafana dashboards:
 
-Talking about other dashboards
-- Kubernetes / Compute Resources / Namespace (Pods) - worth to mention, it allows to view (HTTP response statuses per service or per specific pod, amount of requests, latency)
+- **Staging**: [grafana.staging.ani.tech](https://grafana.staging.ani.tech)
+- **Production**: [grafana.ani.tech](https://grafana.ani.tech)
 
-You could use that buttons for filtering out ingress/namespaces/pod metrics show in dashboard (appliable for all dashboards mentioned above)
- 
+Dashboards of interest:
+
+- Kubernetes / Compute Resources / Namespace (Pods)
+- Kubernetes / Compute Resources / Node (Pods)
+- Kubernetes / Compute Resources / Pod
+- Kubernetes / Networking / Namespace (Pods)
+
+Use filters to refine metrics by namespace, pod, etc.
+
+  ![Screenshot](https://github.com/user-attachments/assets/719636ba-9836-4bd7-bfcf-3616ee2f8096)
+
 ---
 
 ### Updating Infrastructure Services
 
-If you need to update an infrastructure service that ArgoCD depends on:
+1. Clone `ani-iacc`, navigate to `k8s-init`.
+2. Create an `.env` file (refer to `.env.example`).
+3. Generate SSH keys and update `.env`.
+4. Run `k8s-init` and apply Helm chart.
 
-1. Clone the `ani-iacc` repository and navigate to `k8s-init`.
-2. Create an `.env` file with the necessary values from `.env.example` (ensure staging and production files are different).
-3. Generate SSH keys for `argocd-image-updater` and provide their paths in the `.env` file.
-4. Run the `k8s-init` script and apply the Helm chart for the desired service.
-
-For services not managed by ArgoCD, you can use `ani_gitops` to apply changes to the `values.yaml` file or add new charts.
+For non-ArgoCD services, use `ani_gitops` to apply changes to `values.yaml`.
 
 ---
 
 ### Managing Dex Users
 
-To add static users or change values for existing infrastructure services like Dex:
+1. Modify `dex-extra.yaml` under `extra-manifests`.
+2. Use `staticPasswords` (bcrypt hash with cost 10).
+3. Apply and redeploy Dex.
 
-1. Modify the `dex-extra.yaml` file in the `extra-manifests` directory.
-2. Use the `staticPasswords` key to add users (passwords should be hashed using a cost factor of 10).
-3. Apply the changes and ensure Dex is deployed before ArgoCD.
+---
 
-### How to access Databases?
+## How to Access Databases?
 
-- In our current architecture we have the following Databases present:
+- In our current architecture, we have the following databases present:
+  <!-- TODO: Add list -->
