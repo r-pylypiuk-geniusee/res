@@ -240,6 +240,38 @@ If ArgoCD fails to detect changes in your service:
 
 ---
 
+### How to view logs from containers
+
+For sure you could do it via Lens IDE and click on pods to view logs in Pod section, however if you need to view old logs for example logs that were received a week ago, you can go to ELK [https://logs.{staging}.ani.tech](https://logs.{staging}.ani.tech). There you could login using elastic user and open up Analyze tab
+![Screenshot 2025-05-08 at 12 05 45](https://github.com/user-attachments/assets/2b9eea4e-f0f6-47ee-bc49-4f526ae9cf5a)
+
+Then you could type out query to filter out pods by service-name, for example on a screenshoot you see query of ani-api - kubernetes.labels.app_kubernetes_io/name : "ani-api", it filters out and shows only that specific service pods, there you also could filter out date of logs to be shown
+![Screenshot 2025-05-08 at 12 09 21](https://github.com/user-attachments/assets/31e3c7b2-d2fc-4ecf-a1be-f0f925259e1c)
+
+From fields names on a left tab, you could choose what fields to view (on a screenshoot you could see - kubernetes.node.name, kubernetes.pod.name, message). Here is exact link to query on a screenshoot - https://logs.staging.ani.tech/app/r/s/3ZTkc 
+
+In order to view logs specifically for a staging or production, you could go to TODO
+
+---
+
+### How to monitor Kubernetes cluster resources, service resources on Kubernetes clusters
+For that, there are two Grafana instances deployed that export resource metrics from Kubernetes cluster, one per environemnt, for staging - grafana.staging.ani.tech, and for production - grafana.ani.tech. Feel free to login via Dex button.
+There you could view all available dashboards via Dashboards button
+![Screenshot 2025-05-08 at 12 20 10](https://github.com/user-attachments/assets/719636ba-9836-4bd7-bfcf-3616ee2f8096)
+
+Useful dashboards here, are 
+- Kubernetes / Compute Resources / Namespace (Pods) - to view reosurce utilization (memory, cpu) per namespace
+- Kubernetes / Compute Resources / Node (Pods) - to view reosurce utilization (memory, cpu) per Node
+- Kubernetes / Compute Resources / Pod - to view resources utilization (memory, cpu per, network metrics Pod)
+There are also similar dashboards specifically for Network metircs (such as Kubernetes / Networking / Namespace (Pods))
+
+Talking about other dashboards
+- Kubernetes / Compute Resources / Namespace (Pods) - worth to mention, it allows to view (HTTP response statuses per service or per specific pod, amount of requests, latency)
+
+You could use that buttons for filtering out ingress/namespaces/pod metrics show in dashboard (appliable for all dashboards mentioned above)
+ 
+---
+
 ### Updating Infrastructure Services
 
 If you need to update an infrastructure service that ArgoCD depends on:
