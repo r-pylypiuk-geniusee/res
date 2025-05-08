@@ -29,6 +29,7 @@ The following repositories support the infrastructure:
 | Repository       | Description                                                                                      |
 | ---------------- | ------------------------------------------------------------------------------------------------ |
 | `ani_app_gitops` | Contains Helm templates for each service per environment, managed by ArgoCD.                    |
+| `ani_app_gitops` | Contains Helm templates for each infrastructure service per environment, managed by ArgoCD.      |
 | `ani-iacc`       | Includes Kubernetes initialization scripts and Terragrunt configurations for environment setup. |
 | `ani-api`        | Backend service repository.                                                                      |
 | `ani-app`        | Frontend service repository.                                                                     |
@@ -315,7 +316,126 @@ For non-ArgoCD services, use `ani_gitops` to apply changes to `values.yaml`.
 
 ---
 
-## How to Access Databases?
+### How to add CronJobs?
 
-- In our current architecture, we have the following databases present:
-  <!-- TODO: Add list -->
+If you need to add a new CronJob, go to the ani-app-gitops repository and select the appropriate environment and service. Then, open the values.yaml file for your service and look for the cronjobs key.
+
+If the cronjobs key is not present, it means that templating for CronJobs has not been configured yet.
+
+If the cronjobs key is present, you can add your new CronJob to the list under this key. The name of the CronJob should be used as the key—for example, in this case, etl-test-script-job is the name of the CronJob.
+```bash
+etl-test-script-job:
+    schedule: "15 3 * * *" # schedule when job should run in cron format
+    args:
+      - /app/app/scripts/etl/cron_jobs/scripts/etl_test_script.py # which script to run for cronjob (it is path shown in container, to place script yous should go to repository of service and place your script into specified path, as here etl_test_script.py has been placed)
+    backoffLimit: 0 # do not restart the job on failure
+    restartPolicy: OnFailure # To restart on failure 
+    nodeSelector: # Needed to place pod jobs into Specific seperate NodeGroup, do not touch it
+      target: etl 
+    tolerations: # Needed to place pod jobs into Specific seperate NodeGroup, do not touch it
+      - key: "target"
+        operator: "Equal"
+        value: "etl"
+        effect: "NoSchedule"
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule
+```
+
+
+---
+
+### How to get inside a pod 
+
+There are two common methods to access a running pod for debugging or operational purposes: **kubectl CLI** and **Lens IDE**.
+
+#### Option 1: Using Lens IDE (Recommended for UI-based workflows)
+
+1. Open **Lens IDE** and navigate to the **Pods** section in the desired namespace.
+2. Locate the specific pod you want to access.
+3. Click on the pod to open its detail view.
+4. Inside the pod details, locate the terminal icon (shell access symbol).
+5. Click the icon to open an interactive terminal session attached to the pod’s container.
+6. You can now execute commands inside the pod environment just as you would via `kubectl exec`.
+
+<img width="995" alt="Screenshot 2025-05-09 at 01 59 40" src="https://github.com/user-attachments/assets/1c14ceb0-ffb4-423a-9538-7cb7ca76d6e4" />
+
+#### Option 2: Using kubectl CLI
+
+If you prefer CLI-based access or are working outside Lens:
+
+```bash
+kubectl exec -it <pod-name> -n <namespace> -- /bin/sh
+```
+---
+
+### How to Access Databases?
+
+Our current infrastructure includes the following primary database services:
+
+- **Redis**: Deployed internally within the Kubernetes cluster.
+- **MongoDB**: Hosted externally using MongoDB Atlas.
+
+####  Accessing Redis (Kubernetes-Internal)
+
+Redis is deployed as a Kubernetes-managed service. To access it, follow these steps:
+
+1. Identify the running Redis pod in the relevant namespace using either Lens IDE or kubectl.
+
+   kubectl get pods -n <namespace> | grep redis
+
+2. Connect to the Redis pod using the terminal:
+
+   - **Using Lens**: Select the Redis pod → click the terminal icon.
+   - **Using CLI**:
+
+     kubectl exec -it <redis-pod-name> -n <namespace> -- /bin/sh
+
+3. Once inside the pod, authenticate using the Redis CLI:
+
+   redis-cli -a <your_redis_password>
+
+4. The Redis password is stored securely in your environment’s values.yaml file under sealedSecrets.  
+   - To retrieve the password:
+     - Locate the correct environment and service path in ani_app_gitops.
+     - Decrypt the sealed secret using kubeseal with the private key.
+
+> Ensure you're using the correct Kubernetes context and namespace before
+
+#### Accessing MongoDB (Hosted on MongoDB Atlas)
+
+MongoDB is not hosted within Kubernetes; instead, it is managed through MongoDB Atlas, providing cloud scalability and high availability.
+
+- **Access Instructions**:  
+  TODO 
+
+
+### Accessing RabbitMQ Web UI
+
+RabbitMQ provides a user-friendly Web UI for managing queues, exchanges, bindings, and message flow. It is deployed within Kubernetes and accessed through port-forwarding.
+
+#### Steps to Access via Lens IDE:
+
+1. Open Lens IDE and navigate to the Services section.
+2. Locate the RabbitMQ service within the appropriate namespace.
+3. Click the port-forward icon on the RabbitMQ service as shown in the screenshot:
+
+   <img width="995" alt="Screenshot 2025-05-09 at 01 59 40" src="https://github.com/user-attachments/assets/7a72ea41-534e-4b14-943a-ed37e388d3bd" />
+
+4. Forward port 15672, which is RabbitMQ’s default management UI port.
+
+5. Open a web browser and navigate to:
+
+   http://localhost:15672
+
+6. Log in using the RabbitMQ username and password.
+
+#### Retrieving RabbitMQ Credentials
+
+The credentials for accessing the RabbitMQ Web UI are stored in the values.yaml file for the rmq service in the ani_git_ops repository.
+
+- Direct link to configuration:  
+  https://github.com/byobeta-team/ani_git_ops/blob/main/prod/rmq/values.yaml
+
+> Make sure you have read access to the repository and your Kubernetes context is correctly configured if you need to modify or apply changes to the RabbitMQ deployment.
