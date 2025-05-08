@@ -172,9 +172,54 @@ Environment variables for each service are stored in the `ani_app_gitops` reposi
 
 To create a new sealed secret:
 
-1. [TODO: Add exact CLI or tool steps here.]
-2. Commit the updated `values.yaml` file to the appropriate location in the `ani_app_gitops` repository.
-3. This will trigger a redeploy, and the updated secret will be applied to the service.
+1. Download Kubeseal - https://github.com/bitnami-labs/sealed-secrets#homebrew
+2. In order to seal Kubenetes secret you already should have access to Kubernetes Cluster, as Seal Controller uses private key for sealing/unsealing operations on secrets, therefore please check access to Kubernetes and configured Kubernetes Context
+3. Here is example command
+echo -n bar | kubectl create secret generic mysecret --dry-run=client --from-file=foo=/dev/stdin -o json >mysecret.json
+In the terminal you would receive something like that
+{
+    "kind": "Secret",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "mysecret",
+        "creationTimestamp": null
+    },
+    "data": {
+        "foo": "YmFy"
+    }
+}
+
+it basically how your sealed secret should look like and you could value of key foo
+5. Commit the updated `values.yaml` file to the appropriate location in the `ani_app_gitops` repository.
+6. This will trigger a redeploy, and the updated secret will be applied to the service.
+
+### How to view sealed secret in plain format
+
+First of all, check once more that you have setted needed Kubernetes context for your cluster, after that you can proceed.
+1. Retrieve sealed secret from your cluster, to start you coudl view all your sealedsecrets with
+   ![Screenshot 2025-05-08 at 13 23 38](https://github.com/user-attachments/assets/f23adbfc-9fd5-49a8-98d0-603781c0dc92)
+
+2. Then remember namespace and name of your secret and download it to your local machine
+   For example to retrieve ani-api secret inside ani-api namespace you could use that command
+
+kubectl get sealedsecret ani-api -n ani-api -o yaml > sealed-secret-v2.yaml  
+
+3. Also you would need to get private key used by Sealed secrets for encryption operation (please be carefull, as all secrets are encrypted via that key)
+To retrieve it you could use that command and it will appear in sealed-secrets-key.yaml
+ file
+
+kubectl get secret -n sealed-secrets -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealed-secrets-key.yaml
+
+
+4. After that all you need is to run, and you would see decrypted secrets in base64 format
+
+   kubeseal --controller-name=sealed-secrets --controller-namespace=sealed-secrets < sealed-secret-v2.yaml --recovery-unseal --recovery-private-key sealed-secrets-key.yaml -o yaml
+
+To unhash it from base64 format you ccould run the following command 
+
+echo '{secret}' | base64 --decode
+
+there in data key you would see all unsealed secre
 
 ---
 
@@ -292,3 +337,7 @@ To add static users or change values for existing infrastructure services like D
 1. Modify the `dex-extra.yaml` file in the `extra-manifests` directory.
 2. Use the `staticPasswords` key to add users (passwords should be hashed using a cost factor of 10).
 3. Apply the changes and ensure Dex is deployed before ArgoCD.
+
+### How to access Databases?
+
+- In our current architecture we have the following Databases present:
