@@ -39,13 +39,61 @@ The following repositories support the infrastructure:
 
 ## Infrastructure Services in Kubernetes
 
-Several infrastructure services are deployed in Kubernetes:
+Several key infrastructure services are deployed within the Kubernetes cluster:
 
-- **cert-manager**: Issues self-signed SSL certificates for Ingresses.  
-  _To create a new Ingress with a certificate: TODO._
-- **external-dns**: Automatically creates DNS records in Cloudflare for defined Ingress hosts.  
-  _To configure a new host: TODO._
-- **Dex**: An identity service integrating with external authentication systems (e.g., Google, Azure, Email, etc.).
+---
+
+### cert-manager
+
+`cert-manager` is responsible for issuing SSL/TLS certificates, including self-signed and Let's Encrypt certificates for your Kubernetes Ingress resources.
+
+To issue a certificate for a new Ingress, include the following:
+
+```yaml
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - <your.domain.com>
+      secretName: <your-domain-com>-tls  # Replace dots with dashes
+```
+
+Once applied, `cert-manager` will automatically create a valid certificate for your specified DNS.
+
+
+  
+### external-dns
+
+`external-dns` automates the creation and management of DNS records by syncing Kubernetes Ingress resources with external DNS providers, such as **Cloudflare**.
+
+To enable `external-dns` for your Ingress resource, configure it as follows:
+
+```yaml
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod  # Optional: Enables TLS via cert-manager
+spec:
+  ingressClassName: external-nginx
+  rules:
+    - host: <your.domain.com>
+```
+This setup will instruct external-dns to:
+
+- Automatically create the specified DNS record (<your.domain.com>) in the connected Cloudflare account.
+- Ensure that DNS changes reflect updates in your Kubernetes Ingress objects.
+
+
+
+### dex
+- An identity service integrating with external authentication systems (e.g., Google, Azure, Email, etc.).
+For common actions done on that infrastructure resource, you can face the situation when you need to create new static User for clients in order to test Production Environment
+
+1. Modify `dex-extra.yaml` under `extra-manifests`.
+2. Use `staticPasswords` (bcrypt hash with cost 10).
+3. Apply and redeploy Dex.
+
 
 ---
 
@@ -305,14 +353,6 @@ Use filters to refine metrics by namespace, pod, etc.
 4. Run `k8s-init` and apply Helm chart.
 
 For non-ArgoCD services, use `ani_gitops` to apply changes to `values.yaml`.
-
----
-
-### Managing Dex Users
-
-1. Modify `dex-extra.yaml` under `extra-manifests`.
-2. Use `staticPasswords` (bcrypt hash with cost 10).
-3. Apply and redeploy Dex.
 
 ---
 
